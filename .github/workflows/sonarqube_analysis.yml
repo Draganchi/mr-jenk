@@ -1,0 +1,117 @@
+name: SonarQube Analysis
+
+on:
+  push:
+    branches:
+      - "staging"
+
+jobs:
+  sonarqube_scan:
+    name: Run SonarQube Scan
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        project: ["user-service", "product-service", "media-service", "order-service", "angular"]
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17 for Java Projects
+        if: matrix.project != 'angular'
+        uses: actions/setup-java@v2
+        with:
+          java-version: "17"
+          distribution: "temurin"
+
+      - name: Set up Node.js for Angular Project
+        if: matrix.project == 'angular'
+        uses: actions/setup-node@v2
+        with:
+          node-version: "18"
+
+      - name: Build and Test (Java Projects)
+        if: matrix.project != 'angular'
+        run: |
+          cd ${{ matrix.project }}
+          mvn package
+          mvn test
+
+      - name: Build and Test (Angular Project)
+        if: matrix.project == 'angular'
+        run: |
+          cd angular
+          npm install
+          npm install -g @angular/cli
+          ng test --watch=false --progress=false --browsers ChromeHeadless
+
+      - name: Install SonarScanner
+        run: |
+          wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.6.2.2472-linux.zip
+          unzip sonar-scanner-cli-4.6.2.2472-linux.zip
+          echo "$PWD/sonar-scanner-4.6.2.2472-linux/bin" >> $GITHUB_PATH
+
+      - name: Make SonarScanner Script Executable
+        run: chmod +x run_sonar_scanner.sh
+
+      - name: SonarQube Scan (User Service)
+        if: matrix.project == 'user-service'
+        run: |
+          TEST_REPORT_PATH=""
+          if [ -f reports/test-report.xml ]; then
+            TEST_REPORT_PATH="-Dsonar.testExecutionReportPaths=reports/test-report.xml"
+          fi
+          ./run_sonar_scanner.sh user-service -Dsonar.projectKey=user-service-github -Dsonar.host.url=http://64.226.78.45:9000 -Dsonar.login=${{ secrets.SONAR_TOKEN }} -Dsonar.java.binaries=target/classes -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info $TEST_REPORT_PATH
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: http://64.226.78.45:9000
+
+      - name: SonarQube Scan (Product Service)
+        if: matrix.project == 'product-service'
+        run: |
+          TEST_REPORT_PATH=""
+          if [ -f reports/test-report.xml ]; then
+            TEST_REPORT_PATH="-Dsonar.testExecutionReportPaths=reports/test-report.xml"
+          fi
+          ./run_sonar_scanner.sh product-service -Dsonar.projectKey=product-service-github -Dsonar.host.url=http://64.226.78.45:9000 -Dsonar.login=${{ secrets.SONAR_TOKEN }} -Dsonar.java.binaries=target/classes -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info $TEST_REPORT_PATH
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: http://64.226.78.45:9000
+
+      - name: SonarQube Scan (Media Service)
+        if: matrix.project == 'media-service'
+        run: |
+          TEST_REPORT_PATH=""
+          if [ -f reports/test-report.xml ]; then
+            TEST_REPORT_PATH="-Dsonar.testExecutionReportPaths=reports/test-report.xml"
+          fi
+          ./run_sonar_scanner.sh media-service -Dsonar.projectKey=mediaservice-github -Dsonar.host.url=http://64.226.78.45:9000 -Dsonar.login=${{ secrets.SONAR_TOKEN }} -Dsonar.java.binaries=target/classes -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info $TEST_REPORT_PATH
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: http://64.226.78.45:9000
+
+      - name: SonarQube Scan (Order Service)
+        if: matrix.project == 'order-service'
+        run: |
+          TEST_REPORT_PATH=""
+          if [ -f reports/test-report.xml ]; then
+            TEST_REPORT_PATH="-Dsonar.testExecutionReportPaths=reports/test-report.xml"
+          fi
+          ./run_sonar_scanner.sh order-service -Dsonar.projectKey=order-service-github -Dsonar.host.url=http://64.226.78.45:9000 -Dsonar.login=${{ secrets.SONAR_TOKEN }} -Dsonar.java.binaries=target/classes -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info $TEST_REPORT_PATH
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: http://64.226.78.45:9000
+
+      - name: SonarQube Scan (Angular)
+        if: matrix.project == 'angular'
+        run: |
+          TEST_REPORT_PATH=""
+          if [ -f reports/test-report.xml ]; then
+            TEST_REPORT_PATH="-Dsonar.testExecutionReportPaths=reports/test-report.xml"
+          fi
+          ./run_sonar_scanner.sh angular -Dsonar.projectKey=buy-01-angular -Dsonar.host.url=http://64.226.78.45:9000 -Dsonar.login=${{ secrets.SONAR_TOKEN }} -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info $TEST_REPORT_PATH
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: http://64.226.78.45:9000
